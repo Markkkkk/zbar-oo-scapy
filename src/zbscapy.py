@@ -7,14 +7,15 @@ import threading
 from bs4 import BeautifulSoup
 
 BASE_FOLDER_PATH = 'picture'
-PORT_HOST = 'http://m.meituri.com/'
-HOST_PREFIX = 'http://m.meituri.com/t'
-MAX_PAGE_NUM = 387
+PORT_HOST = 'http://www.meituri.com/zhongguo/'
+HOST_PREFIX = 'http://www.meituri.com/a/'
+MAX_PAGE_NUM = 50 
 
 def input_data():
     print('feed data to tensorflow')
     
 def downloadUrl(url):
+    print(url)
     try:
         response = urllib2.urlopen(url, timeout=10)
 
@@ -35,10 +36,8 @@ def checkDocuments(path):
     if os.path.exists(path) == False:
         os.mkdir(path)
 
-'''
 def downloadPage(url):
 
-    print "page:"+url  
     # 获取当前页面数据  
     content = downloadUrl(url)  
     # 传入页面数据content，创建beautifulsoup对象soup  
@@ -46,9 +45,10 @@ def downloadPage(url):
                          'html.parser',  
                          from_encoding='utf-8')  
     # 获取单页中18个图片专辑的父节点  
-    album_block = soup.find('ul', id='images')  
+    album_block = soup.find('ul')
     # 获取父节点下图片专辑地址的a节点集  
-    album_nodes = album_block.findAll('a', href=re.compile(r'http://www.znzhi.net/p/'))  
+    album_nodes = album_block.findAll('a',
+                                      href=re.compile(r'http://www.meituri.com/t/'))  
     # 由于每个专辑的a标签有两个，用[::2]获取a节点集中的偶数项，循环下载图片专辑  
     for album_node in album_nodes[::2]:  
         # 调用downloadAlbum  
@@ -59,7 +59,8 @@ def downloadPage(url):
             exit(0)  
         # 设置图片专辑下载间隙休眠，防止因访问频繁，被网站拉黑  
         time.sleep(4)
-        
+ 
+'''
 def downloadAlbum(url):  
     print "album:"+url
     # 获取当前页面数据  
@@ -149,11 +150,14 @@ if __name__ == "__main__":
     
     # 循环访问
     for i in range(1, MAX_PAGE_NUM+1):
+        if i == 1:
+            page_url = PORT_HOST
         # 拼接页地址，fix me
-        page_url = HOST_PREFIX + '/' + str(i) + '.html'  
+        else:
+            page_url = PORT_HOST + str(i) +'.html'
         # 保存当前页码，供查看下载进度
         with open('cur_page.txt', 'w') as fpage:  
             fpage.write(str(i))  
         # 以页为单位进行下载
-        '''downloadPage(page_url)'''       
+        downloadPage(page_url)       
         
