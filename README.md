@@ -16,3 +16,9 @@ You can use pip commond to install face_recogition
 ```
 pip install face_recognition
 ```
+
+### beautifulsoup4
+Use pip to isntall beautifulsoup4
+```
+pip install beautifulsoup4
+```
