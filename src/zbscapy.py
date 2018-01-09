@@ -4,12 +4,13 @@ import urllib2
 import os  
 import re  
 import threading
+import time
 from bs4 import BeautifulSoup
 
 BASE_FOLDER_PATH = 'picture'
 PORT_HOST = 'http://www.meituri.com/zhongguo/'
 HOST_PREFIX = 'http://www.meituri.com/a/'
-MAX_PAGE_NUM = 50 
+MAX_PAGE_NUM = 5#0
 
 def input_data():
     print('feed data to tensorflow')
@@ -45,21 +46,29 @@ def downloadPage(url):
                          'html.parser',  
                          from_encoding='utf-8')  
     # 获取单页中18个图片专辑的父节点  
-    album_block = soup.find('ul')
-    # 获取父节点下图片专辑地址的a节点集  
-    album_nodes = album_block.findAll('a',
+    album_blocks = soup.findAll('ul')
+    for album_block in album_blocks:
+        # 获取父节点下图片专辑地址的a节点集  
+        album_nodes = album_block.findAll('a',
                                       href=re.compile(r'http://www.meituri.com/t/'))  
-    # 由于每个专辑的a标签有两个，用[::2]获取a节点集中的偶数项，循环下载图片专辑  
-    for album_node in album_nodes[::2]:  
-        # 调用downloadAlbum  
-        # 传入album_node.get('href')获取a节点的href值，即专辑地址  
-        downloadAlbum(album_node.get('href'))  
-        # 若运行中想终止爬虫程序，可在同父目录下新建stop.txt文件  
-        if os.path.exists('stop.txt'):  
-            exit(0)  
-        # 设置图片专辑下载间隙休眠，防止因访问频繁，被网站拉黑  
-        time.sleep(4)
- 
+        # 由于每个专辑的a标签有两个，用[::2]获取a节点集中的偶数项，循环下载图片专辑  
+        for album_node in album_nodes[::2]:  
+            # 调用downloadAlbum  
+            # 传入album_node.get('href')获取a节点的href值，即专辑地址  
+            # downloadAlbum(album_node.get('href'))  
+            print(album_node.get('href'))
+            # 若运行中想终止爬虫程序，可在同父目录下新建stop.txt文件  
+            if os.path.exists('stop.txt'):  
+                exit(0)  
+            # 设置图片专辑下载间隙休眠，防止因访问频繁，被网站拉黑  
+            time.sleep(4)
+        
+        # 页面是由两段组成，前面是相册，后面是散图
+        hezi_nodes = album_block.findAll('a', href=re.compile(r'http://www.meituri.com/a/')) 
+        for hezi_node in hezi_nodes[::2]:
+            print(hezi_node.get('href'))
+            time.sleep(4)
+        
 '''
 def downloadAlbum(url):  
     print "album:"+url
