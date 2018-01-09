@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 BASE_FOLDER_PATH = 'picture'
 PORT_HOST = 'http://www.meituri.com/zhongguo/'
 HOST_PREFIX = 'http://www.meituri.com/a/'
-MAX_PAGE_NUM = 5#0
+MAX_PAGE_NUM = 2#0
 
 def input_data():
     print('feed data to tensorflow')
@@ -55,8 +55,7 @@ def downloadPage(url):
         for album_node in album_nodes[::2]:  
             # 调用downloadAlbum  
             # 传入album_node.get('href')获取a节点的href值，即专辑地址  
-            # downloadAlbum(album_node.get('href'))  
-            print(album_node.get('href'))
+            downloadAlbum(album_node.get('href'))  
             # 若运行中想终止爬虫程序，可在同父目录下新建stop.txt文件  
             if os.path.exists('stop.txt'):  
                 exit(0)  
@@ -64,12 +63,11 @@ def downloadPage(url):
             time.sleep(4)
         
         # 页面是由两段组成，前面是相册，后面是散图
-        hezi_nodes = album_block.findAll('a', href=re.compile(r'http://www.meituri.com/a/')) 
-        for hezi_node in hezi_nodes[::2]:
-            print(hezi_node.get('href'))
-            time.sleep(4)
+        #hezi_nodes = album_block.findAll('a', href=re.compile(r'http://www.meituri.com/a/')) 
+        #for hezi_node in hezi_nodes[::2]:
+        #    print(hezi_node.get('href'))
+        #    time.sleep(4)
         
-'''
 def downloadAlbum(url):  
     print "album:"+url
     # 获取当前页面数据  
@@ -79,46 +77,39 @@ def downloadAlbum(url):
                          'html.parser',  
                          from_encoding='utf-8')  
     # 获取存有图片专辑标题的h2标签  
-    title = soup.find('div', class_='content').find('h2')  
-    # 检查是否有内容，在实际爬取中，有遇到过空图片专辑的情况，  
-    if title == None:  
-        print "error:web content has lost"  
-        return  
-    # 通过正则筛选出标题中含有的总图片数值  
-    title_num = re.findall(r'\d+', title.get_text())  
-    pic_count = int(title_num[-1])  
-    # 将（1/num)截取去除，并添加总图片数 [num]  
-    title_split = title.get_text().split(' (', 1)  
-    album_title = title_split[0]+'['+str(pic_count)+']'  
-    # 删去标题中的'/'字符，防止在用标题作为名称建图片文件夹时报错  
-    album_title = album_title.replace('/', ' ')  
-    # 拼接本地文件夹路径，并检查路径是否存在，防止重复下载  
-    path = BASE_PATH + "/" + album_title  
-    if os.path.exists(path):  
-        print '  -> ' + album_title + ' has exists'  
-        return True  
-    # 新建存放当前专辑的图片文件夹  
-    checkDocuments(path)  
-    print path  
-    # 新建一个html，存有此图片专辑相关信息  
-    with open(path+'/source.html','w') as fout:  
-        fout.write("<html>")  
-        fout.write("<body>")  
-        fout.write("<p>"+album_title.encode('utf-8')+"-["+str(pic_count)+"p]"+"</p>")  
-        fout.write("<a href=\""+url.encode('utf-8')+"\">来源网址:"+url.encode('utf-8')+"</a>")  
-        fout.write("</body>")  
-        fout.write("</html>")  
-    # 循环下载专辑中各个图片  
-    for num in range(1, pic_count+1):  
-        pic_url = url+"/"+str(num)+'.html'  
-        i=0  
-        while downloadOnePic(path, pic_url) == False:  
-            print 'redownload'  
-            i=i+1  
-            if i > 5:  
-                print "timeout's time too much"  
-                break
-# 获取相册名称  
+    album_block = soup.find('div', class_='hezi').find('ul') 
+
+    # 获取专辑的标题，并生成文件夹，防止冲突
+    albums = album_block.findAll('li')
+    for album in albums:
+        photos_path = album.find('a', href=re.compile(r'http://www.meituri.com/a/'))
+        if photos_path == None:
+            continue
+        title_block = album.find('p', class_='biaoti').find('a')
+        if title_block == None:
+            continue
+        album_title = title_block.get_text()
+        album_title = album_title.replace('/', ' ')
+
+        # 拼接本地文件夹路径，并检查路径是否存在，防止重复下载  
+        path = BASE_FOLDER_PATH + "/" + album_title  
+        if os.path.exists(path):  
+            return True  
+    
+        # 新建存放当前专辑的图片文件夹  
+        checkDocuments(path)
+    
+        # photos_path是第一张图片所在页面，并且包括页码
+        #   根据页码，组成页面，并在一个页面中，循环下载
+        page_num = 0
+        while True:
+            if page_num == 0:
+                path_url = photos_path.get('href')
+            else:
+                path_url = photos_path.get('href') + str(page_num) + '/'
+            print(path_url)
+            page_num++
+# 获取相册名称
 def getPicName(picUrl) :  
     # 截取地址中最后一个/后面的字符，即图片名
     picName = os.path.basename(picUrl)  
@@ -150,13 +141,12 @@ def downloadOnePic(path,url):
         print "exception:"+e.message  
         return False  
     return True 
-'''
 
 # 主函数
 if __name__ == "__main__":
     # 检查本地下载路径是否存在
     checkDocuments(BASE_FOLDER_PATH)
-    
+     
     # 循环访问
     for i in range(1, MAX_PAGE_NUM+1):
         if i == 1:
