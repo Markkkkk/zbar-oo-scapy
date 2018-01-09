@@ -14,7 +14,8 @@ You can build these code on **Linux or MacOS** (**Windows** is not an offical su
 
 ### face_recognition
 You can use pip commond to install [face_recogition](https://github.com/ageitgey/face_recognition). The [face_recogition](https://github.com/ageitgey/face_recognition) is a project on github.
-Where is it: https://github.com/ageitgey/face_recognition
+
+You can find it at https://github.com/ageitgey/face_recognition.
 ```
 pip install face_recognition
 ```
