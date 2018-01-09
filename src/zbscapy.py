@@ -7,16 +7,15 @@ import threading
 import time
 from bs4 import BeautifulSoup
 
-BASE_FOLDER_PATH = 'picture'
+BASE_FOLDER_PATH = '/hdd/zbar-scapy/pictures'
 PORT_HOST = 'http://www.meituri.com/zhongguo/'
 HOST_PREFIX = 'http://www.meituri.com/a/'
-MAX_PAGE_NUM = 2#0
+MAX_PAGE_NUM = 1#0
 
 def input_data():
     print('feed data to tensorflow')
     
 def downloadUrl(url):
-    print(url)
     try:
         response = urllib2.urlopen(url, timeout=10)
 
@@ -37,7 +36,7 @@ def checkDocuments(path):
     if os.path.exists(path) == False:
         os.mkdir(path)
 
-def downloadPage(url):
+def downloadHomePage(url):
 
     # 获取当前页面数据  
     content = downloadUrl(url)  
@@ -99,16 +98,56 @@ def downloadAlbum(url):
         # 新建存放当前专辑的图片文件夹  
         checkDocuments(path)
     
+        time.sleep(5)
         # photos_path是第一张图片所在页面，并且包括页码
         #   根据页码，组成页面，并在一个页面中，循环下载
         page_num = 0
-        while True:
-            if page_num == 0:
-                path_url = photos_path.get('href')
+        contentPage = downloadUrl(photos_path.get('href'))
+        soupPage = BeautifulSoup(contentPage, 'html.parser', from_encoding='utf-8')
+        #pages_blocks = soupPage.findAll('center')
+        #for pages_blockItr in pages_blocks:
+        pages_block = soupPage.find('div', id='pages')
+            
+        pages = pages_block.findAll('a', href=re.compile(r'http://www.meituri.com/a/'))
+        if pages == None:
+            continue
+        page_num = int(pages[len(pages)-2].get_text())
+        print('%s%s%s' % (soupPage.title, '页数：', str(page_num)))
+        
+        for i in range(1, page_num+1):
+            if i == 1:
+                #第一页就顺便处理了
+                downloadPage(soupPage, path)
             else:
-                path_url = photos_path.get('href') + str(page_num) + '/'
-            print(path_url)
-            page_num++
+                # 以后的调用
+                path_url = photos_path.get('href') + str(i) + '/'
+                nextPageContent = downloadUrl(path_url)
+                nextPageCoup = BeautifulSoup(contentPage, 'html.parser', from_encoding='utf-8')
+                downloadPage(nextPageCoup, path)
+            
+def downloadPage(pageSoup, path):
+    # 获取存有img节点  
+    img_nodes = pageSoup.find('div', class_='content').findAll('img', class_='tupian_img')
+    for img_node in img_nodes:
+        pic_url = img_node.get('src')
+        # 调用getPicName()获取图片名称  
+        pic_name = getPicName(pic_url).encode('utf-8')
+        print('%s%s%s' % (pic_name, ',', pic_url))
+        '''
+        try:  
+            # 访问图片地址，获取数据  
+            content = urllib2.urlopen(pic_url, timeout=10).read()  
+            # 保存图片到本地  
+            with open(path + '/' + pic_name, 'wb') as code:  
+                code.write(content)  
+            print '  -> ' + pic_name + " download success"  
+        #捕获异常  
+        except Exception, e:  
+            print "exception:"+e.message  
+            return False  
+    return True
+    ''' 
+    
 # 获取相册名称
 def getPicName(picUrl) :  
     # 截取地址中最后一个/后面的字符，即图片名
@@ -116,31 +155,6 @@ def getPicName(picUrl) :
     if '.jpg' in picName:  
         return picName  
     return 'error.jpg'
-
-# 下载单张照片
-def downloadOnePic(path,url):
-
-    soup = BeautifulSoup(downloadUrl(url),  
-                         'html.parser',  
-                         from_encoding='utf-8')  
-    # 获取存有img节点  
-    img_node = soup.find('div', class_='main-image').find('img')  
-    # 获取img的src值，即图片地址  
-    pic_url = img_node.get('src')  
-    # 调用getPicName()获取图片名称  
-    pic_name = getPicName(pic_url).encode('utf-8')  
-    try:  
-        # 访问图片地址，获取数据  
-        content = urllib2.urlopen(pic_url, timeout=10).read()  
-        # 保存图片到本地  
-        with open(path + '/' + pic_name, 'wb') as code:  
-            code.write(content)  
-        print '  -> ' + pic_name + " download success"  
-    #捕获异常  
-    except Exception, e:  
-        print "exception:"+e.message  
-        return False  
-    return True 
 
 # 主函数
 if __name__ == "__main__":
@@ -158,5 +172,5 @@ if __name__ == "__main__":
         with open('cur_page.txt', 'w') as fpage:  
             fpage.write(str(i))  
         # 以页为单位进行下载
-        downloadPage(page_url)       
+        downloadHomePage(page_url)       
         
