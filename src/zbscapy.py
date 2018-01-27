@@ -6,6 +6,9 @@ import re
 import threading
 import time
 from bs4 import BeautifulSoup
+from selenium import webdriver
+#from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+from selenium.webdriver.chrome.options import Options
 
 BASE_FOLDER_PATH = '/hdd/zbar-scapy/pictures'
 PORT_HOST = 'http://www.meituri.com/zhongguo/'
@@ -15,6 +18,7 @@ MAX_PAGE_NUM = 1#0
 def input_data():
     print('feed data to tensorflow')
     
+# 按URL下载内容
 def downloadUrl(url):
     try:
         response = urllib2.urlopen(url, timeout=10)
@@ -32,10 +36,12 @@ def downloadUrl(url):
         # fix me, dead cycle perhapse
         return downloadUrl(url)
 
-def checkDocuments(path):
+# 检查路径，若无，创建文件夹
+def checkDir(path):
     if os.path.exists(path) == False:
         os.mkdir(path)
 
+# 入口网页，按专辑下载
 def downloadHomePage(url):
 
     # 获取当前页面数据  
@@ -67,6 +73,7 @@ def downloadHomePage(url):
         #    print(hezi_node.get('href'))
         #    time.sleep(4)
         
+# 按相册下载
 def downloadAlbum(url):  
     print "album:"+url
     # 获取当前页面数据  
@@ -96,14 +103,14 @@ def downloadAlbum(url):
             return True  
     
         # 新建存放当前专辑的图片文件夹  
-        checkDocuments(path)
+        checkDir(path)
     
         time.sleep(5)
         # photos_path是第一张图片所在页面，并且包括页码
         #   根据页码，组成页面，并在一个页面中，循环下载
         page_num = 0
-        contentPage = downloadUrl(photos_path.get('href'))
-        soupPage = BeautifulSoup(contentPage, 'html.parser', from_encoding='utf-8')
+        c = preDownloadPage(photos_path.get('href'))
+        soupPage = BeautifulSoup(c, 'html.parser', from_encoding='utf-8')
         #pages_blocks = soupPage.findAll('center')
         #for pages_blockItr in pages_blocks:
         pages_block = soupPage.find('div', id='pages')
@@ -120,12 +127,31 @@ def downloadAlbum(url):
                 downloadPage(soupPage, path)
             else:
                 # 以后的调用
-                path_url = photos_path.get('href') + str(i) + '/'
-                nextPageContent = downloadUrl(path_url)
-                nextPageCoup = BeautifulSoup(contentPage, 'html.parser', from_encoding='utf-8')
+                path_url = photos_path.get('href') + str(i) + '.html'
+                nextPageContent = preDownloadPage(path_url)
+                #nextPageContent = downloadUrl(path_url)
+                nextPageCoup = BeautifulSoup(nextPageContent, 'html.parser', from_encoding='utf-8')
                 downloadPage(nextPageCoup, path)
-            
+
+# 模拟滚动
+def preDownloadPage(url):
+    # 操作屏幕滚动
+    #dcap = dict(DesiredCapabilities.PHANTOMJS)
+    #dcap["phantomjs.page.settings.userAgent"] = ("Mozilla/5.0 (Linux; Android 5.1.1)")
+    
+    profile = webdriver.FirefoxProfile()
+    driver = webdriver.Firefox(profile)
+
+    driver.get(url)
+    time.sleep(3)
+    js="document.body.scrollTop=1000"
+    driver.execute_script(js)
+    time.sleep(4)
+    return driver.page_source
+    
+# 按当前页面下载            
 def downloadPage(pageSoup, path):
+
     # 获取存有img节点  
     img_nodes = pageSoup.find('div', class_='content').findAll('img', class_='tupian_img')
     for img_node in img_nodes:
@@ -133,10 +159,12 @@ def downloadPage(pageSoup, path):
         # 调用getPicName()获取图片名称  
         pic_name = getPicName(pic_url).encode('utf-8')
         print('%s%s%s' % (pic_name, ',', pic_url))
-        '''
+        
         try:  
             # 访问图片地址，获取数据  
-            content = urllib2.urlopen(pic_url, timeout=10).read()  
+            headers = {'User-Agent':'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.6) Gecko/20091201 Firefox/3.5.6'} 
+            req = urllib2.Request(pic_url, headers=headers) 
+            content = urllib2.urlopen(req).read()  
             # 保存图片到本地  
             with open(path + '/' + pic_name, 'wb') as code:  
                 code.write(content)  
@@ -144,9 +172,9 @@ def downloadPage(pageSoup, path):
         #捕获异常  
         except Exception, e:  
             print "exception:"+e.message  
-            return False  
+            continue 
     return True
-    ''' 
+    
     
 # 获取相册名称
 def getPicName(picUrl) :  
@@ -159,8 +187,7 @@ def getPicName(picUrl) :
 # 主函数
 if __name__ == "__main__":
     # 检查本地下载路径是否存在
-    checkDocuments(BASE_FOLDER_PATH)
-     
+    checkDir(BASE_FOLDER_PATH)
     # 循环访问
     for i in range(1, MAX_PAGE_NUM+1):
         if i == 1:
@@ -173,4 +200,3 @@ if __name__ == "__main__":
             fpage.write(str(i))  
         # 以页为单位进行下载
         downloadHomePage(page_url)       
-        
